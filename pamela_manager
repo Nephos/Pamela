@@ -1,0 +1,53 @@
+#!/bin/bash
+
+echo "pamela_manager $@" >> /tmp/pamela.log
+
+# init sessions
+sdir=/tmp/.pamela_sessions
+mkdir -p $sdir
+chmod -R 700 $sdir
+#echo "$sdir is initialized to 700"
+#chmod 700 /home/.pamela
+
+# init arguments
+action=$1
+user=$2
+if [ "$action" = "" ] || [ "$user" = "" ]; then
+  echo "Not enough arguments (need 2 <action> <user>)"
+  exit 1
+fi
+#echo "Parameters are $action and $user"
+
+# init dir arguments
+dir="/home/$user/private"
+usdir="$sdir/$user"
+if [ "$user" = "root" ]; then
+    dir="/root/private"
+fi
+partition="/home/.pamela/$user"
+
+#echo "pamela_manager $action $user $dir $partition" >> /tmp/pamela.log
+#echo "pamela_manager $action $user $dir $partition"
+
+# execute script
+if [ "$action" = "open" ]; then
+  [ -d $partition ] || mkdir -p $partition && chown $user $partition
+  mkdir -p $dir && chown $user $dir
+  if [ -f $usdir ] && [ "$(cat $usdir)" != "0" ]; then
+    nb=$(cat $usdir)
+    nb=$((nb+1))
+    #echo $nb > $usdir
+    echo "Already mounted. $nb times" >> /tmp/pamela.log
+  else
+    su -l $user -c "encfs $partition $dir" && echo 1 > $usdir && chmod go-xrw $partition
+  fi
+elif [ "$action" = "close" ]; then
+  nb=$(cat $usdir)
+  if [ "$nb" -eq "1" ]; then
+    #echo "rm $usdir" >> /tmp/logx
+    su -l $user -c "fusermount -u $dir" && rm $usdir
+  else
+    nb=$((nb-1))
+    #echo "$nb" > $usdir
+  fi
+fi

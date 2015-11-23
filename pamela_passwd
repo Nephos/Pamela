@@ -1,0 +1,3 @@
+#!/bin/sh
+
+encfsctl passwd /home/.pamela/$USER
